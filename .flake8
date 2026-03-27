@@ -1,0 +1,59 @@
+[flake8]
+
+# -------------------------------------------------
+# General
+# -------------------------------------------------
+max-line-length = 88
+statistics = true
+count = true
+show-source = true
+
+# -------------------------------------------------
+# Excluded paths
+# -------------------------------------------------
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .venv,
+    venv,
+    env,
+    migrations,
+    node_modules
+    poet.text
+    alembic,
+
+
+# -------------------------------------------------
+# Ignored errors (PEP8 tweaks)
+# -------------------------------------------------
+ignore =
+    E203,
+    # whitespace before ':' (conflict with black)
+    E266,
+    # too many leading '#' for block comment
+    E501,
+    # line too long (handled by black)
+    W503,
+    # line break before binary operator (PEP8 update)
+    W504
+    # line break after binary operator
+
+# -------------------------------------------------
+# Complexity & Quality
+# -------------------------------------------------
+max-complexity = 10
+
+# -------------------------------------------------
+# Import order (flake8-import-order)
+# -------------------------------------------------
+import-order-style = google
+application-import-names = app, src
+
+# -------------------------------------------------
+# Per file ignores
+# -------------------------------------------------
+per-file-ignores =
+    __init__.py:F401
+    tests/*:S101

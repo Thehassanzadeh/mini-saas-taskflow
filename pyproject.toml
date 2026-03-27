@@ -1,0 +1,54 @@
+[project]
+name = "mini-saas-taskflow"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.110",
+  "fastapi[standard]",
+  "uvicorn[standard]>=0.27",
+  "sqlalchemy>=2.0",
+  "alembic>=1.13",
+  "psycopg[binary]>=3.1",
+  "pydantic-settings>=2.13.1",
+  "pydantic>=2.12.5",
+  "python-dotenv>=1.2.1",
+  "passlib[bcrypt]>=1.7.4",
+  "bcrypt==4.0.1",
+  "pyjwt[crypto]>=2.11.0",
+  "pwdlib[argon2]>=0.3.0",
+  "fastapi-swagger>=0.4.44",
+]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.6",
+  "pytest>=8",
+  "flake8>=7.3.0",
+  "black>=26.3.1",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+
+
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+skip-string-normalization = false
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | env
+  | build
+  | dist
+  | migrations
+  | alembic
+)/
+'''
+
