@@ -7,62 +7,175 @@ from uuid import UUID, uuid4
 from sqlalchemy import DateTime
 
 
-
 class UserModel(Base):
     __tablename__ = "users"
 
-    id:
-    first_name:
-    last_name:
-    email:
-    is_verified:
-    create_at:
+    id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+    first_name: Mapped[str] = mapped_column(nullable=False)
+
+    last_name: Mapped[str] = mapped_column(nullable=True)
+
+    email: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
+
+    phone_number: Mapped[str] = mapped_column(nullable=False, unique=True)
+
+    is_verified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
+
+    teams: Mapped[List["TeamUser"]] = relationship("TeamUser", back_populates="user")
+
+    tasks: Mapped[List["UserTask"]] = relationship("UserTask", back_populates="user")
+
 
 class TeamModel(Base):
     __tablename__ = "teams"
 
-    id:
-    name:
-    description:
-    create_at:
+    id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    name: Mapped[str] = mapped_column(
+        nullable=False,
+    )
+    description: Mapped[str] = mapped_column(sa.String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
+
+    owner_id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True),
+        sa.ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+
+    owner: Mapped["UserModel"] = relationship("UserModel", foreign_keys=[owner_id])
+
+    users: Mapped[List["TeamUser"]] = relationship("TeamUser", back_populates="team")
 
 
 class ProjectModel(Base):
     __tablename__ = "projects"
 
-    id:
-    name:
-    description:
-    goal:
-    ttl:
-    create_at:
+    id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+    name: Mapped[str] = mapped_column(
+        nullable=False,
+    )
+
+    description: Mapped[str] = mapped_column(nullable=True)
+
+    goal: Mapped[str] = mapped_column(nullable=True)
+
+    ttl: Mapped[int] = mapped_column(nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
 
 
 class TaskModel(Base):
     __tablename__ = "tasks"
 
-    id:
-    title:
-    description:
-    status:
-    priority:
-    assigned_to:
-    due_data:
-    create_at:
-    update_at:
+    id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+    title: Mapped[str] = mapped_column(
+        nullable=False,
+    )
+
+    description: Mapped[str] = mapped_column(nullable=True)
+
+    status: Mapped[str] = mapped_column(nullable=False)
+
+    priority: Mapped[str] = mapped_column(nullable=False, default="medium")
+
+    __table_args__ = (
+        sa.CheckConstraint(
+            "status IN ('done', 'in_progress', 'todo')", name="check_task_status"
+        ),
+        sa.CheckConstraint(
+            "priority IN ('high', 'medium', 'low')", name="check_task_priority"
+        ),
+    )
+
+    due_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=sa.func.now(),
+        server_onupdate=sa.func.now(),
+        nullable=False,
+    )
+
+    users: Mapped[List["UserTask"]] = relationship("UserTask", back_populates="task")
 
 
 class TeamUser(Base):
-    __tablename__ = "task-user"
+    __tablename__ = "task_user"
 
-    id:
+    user_id: Mapped[UUID] = mapped_column(sa.ForeignKey("users.id"), primary_key=True)
+    team_id: Mapped[UUID] = mapped_column(sa.ForeignKey("teams.id"), primary_key=True)
+
+    role_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey("roles.id"),
+    )
+
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
+
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="teams")
+
+    team: Mapped["TeamModel"] = relationship("TeamModel", back_populates="users")
+
+    role: Mapped["RoleModel"] = relationship("RoleModel")
+
 
 class UserTask(Base):
-    __tablename__ = "user-task"
+    __tablename__ = "user_task"
+
+    user_id: Mapped[UUID] = mapped_column(sa.ForeignKey("users.id"), primary_key=True)
+
+    task_id: Mapped[UUID] = mapped_column(sa.ForeignKey("tasks.id"), primary_key=True)
+
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="tasks")
+
+    task: Mapped["TaskModel"] = relationship("TaskModel", back_populates="users")
+
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=sa.func.now(),
+    )
+
+    assigned_by_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey("users.id"), nullable=True
+    )
+
 
 class RoleModel(Base):
     __tablename__ = "roles"
-    id:
-    name:
-    description:
-    
+
+    id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+    name: Mapped[str] = mapped_column(
+        nullable=False,
+    )
+
+    description: Mapped[str] = mapped_column(nullable=True)

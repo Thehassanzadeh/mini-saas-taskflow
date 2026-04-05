@@ -6,22 +6,17 @@ from app.config import settings
 load_dotenv()
 
 engine = create_async_engine(
-    settings.SQLALCHEMY_DATABASE_URL,
-    echo=False,
-    pool_per_ping=True
+    settings.SQLALCHEMY_DATABASE_URL, echo=False, pool_pre_ping=True
 )
 
 sessionLocal = async_sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-    expire_on_commit=False
+    autocommit=False, autoflush=False, bind=engine, expire_on_commit=False
 )
-
 
 
 class Base(DeclarativeBase):
     pass
+
 
 async def get_db():
     db = sessionLocal()
@@ -29,4 +24,3 @@ async def get_db():
         yield db
     finally:
         await db.close()
-

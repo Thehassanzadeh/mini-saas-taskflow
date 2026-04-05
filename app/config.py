@@ -1,7 +1,7 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-APP_DIR = Path(__file__).resolve().parents[1]  # .../app
+APP_DIR = Path(__file__).resolve().parents[0]  # .../app
 
 
 class Settings(BaseSettings):
