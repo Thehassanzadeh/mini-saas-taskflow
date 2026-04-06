@@ -6,6 +6,10 @@ APP_DIR = Path(__file__).resolve().parents[0]  # .../app
 
 class Settings(BaseSettings):
     SQLALCHEMY_DATABASE_URL: str
+    JWT_SECRET: str
+    JWT_ALG: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: str
+    REFRESH_TOKEN_EXPIRE_MINUTES: str
 
     model_config = SettingsConfigDict(
         env_file=APP_DIR / ".env",

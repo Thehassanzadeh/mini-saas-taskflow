@@ -32,6 +32,7 @@ class UserModel(Base):
 
     tasks: Mapped[List["UserTask"]] = relationship("UserTask", back_populates="user")
 
+    password_hash: Mapped[str] = mapped_column(sa.String(255), nullable=False)
 
 class TeamModel(Base):
     __tablename__ = "teams"
