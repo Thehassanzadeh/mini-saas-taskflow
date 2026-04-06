@@ -1,8 +1,8 @@
-from fastapi import FastAPI, APIRouter, Request
+from fastapi import FastAPI, Request
 from fastapi_swagger import patch_fastapi
 from contextlib import asynccontextmanager
 from app.db.engine import Base, engine
-from fastapi.middleware.cors import CORSMiddleware
+# from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import time
 
@@ -20,6 +20,7 @@ async def lifespan(app: FastAPI):
 
 
 tags_metadata = [
+    {"name": "auth", "description": "all authentication operation"},
     {"name": "users", "description": "all users operation"},
     {"name": "teams", "description": "all teams operation"},
     {"name": "projects", "description": "all projects operation"},

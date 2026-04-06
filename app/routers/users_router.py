@@ -17,9 +17,10 @@ GET /users/me/tasks # list tasks assigned to user
 
 """
 
-from fastapi import APIRouter, HTTPException
-
-
+from fastapi import APIRouter, HTTPException, status, Depends, 
+from app.schema._input import CreateUserInput
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.engine import get_db
 
 
 
@@ -29,7 +30,15 @@ users_router = APIRouter(prefix="/api/v1")
 
 
 
-@users_router.post("/users")
+@users_router.post(
+    "/users",
+    status_code=status.HTTP_201_CREATED,
+    tags=["users"]
+)
+async def create_user(
+    payload: CreateUserInput,
+    db: AsyncSession = Depends(get_db)
+) -> str
 
 
 @users_router.get("/users/me")

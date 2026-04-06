@@ -1,4 +1,48 @@
-''''
+"""'
+
+✅ Authentication
+POST /auth/register # signup (create user)
+
+POST /auth/login # login → access + refresh token
+
+POST /auth/logout # logout (invalidate refresh token)
+
+POST /auth/refresh # refresh access token
+
+📌 نکته:
+
+/users برای CRUD ادمین یا internal باقی می‌مونه
+ساخت یوزر عمومی از طریق /auth/register انجام می‌شه
+✅ Password Management
+POST /auth/password/forgot # request reset password (email)
+
+POST /auth/password/reset # reset password (token)
+
+PUT /auth/password/change # change password (logged-in user)
+
+✅ Email / Account Verification (اختیاری ولی حرفه‌ای)
+POST /auth/email/verify # verify email with token
+
+POST /auth/email/resend # resend verification email
+
+✅ Session / Token Info
+GET /auth/me # current auth info (id, roles, scopes)
+
+✅ Optional (Advanced – Later)
+OAuth (بدون شکستن API)
+GET /auth/oauth/{provider} # google, github, …
+
+GET /auth/oauth/{provider}/callback
+
+Token Management
+GET /auth/sessions
+
+DELETE /auth/sessions/{session_id}
+
+
+
+
+
 🔵 1. USER (Self / Profile)
 
 POST /users # create user (signup)
@@ -113,4 +157,4 @@ PUT /admin/tasks/{task_id}
 
 DELETE /admin/tasks/{task_id}
 
-'''
+"""

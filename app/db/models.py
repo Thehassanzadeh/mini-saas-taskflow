@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .engine import Base
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime
@@ -33,6 +33,7 @@ class UserModel(Base):
     tasks: Mapped[List["UserTask"]] = relationship("UserTask", back_populates="user")
 
     password_hash: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+
 
 class TeamModel(Base):
     __tablename__ = "teams"
