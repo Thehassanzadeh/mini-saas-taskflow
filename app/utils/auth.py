@@ -29,6 +29,19 @@ async def get_user(db: AsyncSession, user_id: str):
     return result.scalar_one_or_none()
 
 
+async def check_user(db: AsyncSession, phone_number: str, email: str):
+    """
+    simple function for check user from database if exist
+    """
+
+    phone_check = select(UserModel).where(UserModel.phone_number == phone_number)
+    email_check = select(UserModel).where(UserModel.email == email)
+    phone_result = await db.execute(phone_check)
+    email_result = await db.execute(email_check)
+    if (phone_result is None) and (email_result is None):
+        return True
+
+
 async def authenticated_user(db: AsyncSession, user_id: str, password: str):
     """
     this function use for get verify user

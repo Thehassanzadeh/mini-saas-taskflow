@@ -27,26 +27,55 @@ DELETE /auth/sessions/{session_id}
 """
 
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, status, Depends, HTTPException, Response
 
-from fastapi import APIRouter, status, Depends
+from app.db.models import UserModel
 from app.schema._input import CreateUserInput
 from app.db.engine import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
+
+
+from app.utils.password import hash_password as hash
+
+from app.utils.auth import check_user, create_access_token, create_refresh_token
 
 auth_router = APIRouter(prefix="/api/v1")
 
 
-@auth_router.post(
-    "/auth/register",
-    status_code=status.HTTP_201_CREATED,
-    tags=["users"]
-)
+@auth_router.post("/auth/register", status_code=status.HTTP_201_CREATED, tags=["users"])
 async def create_user(
-    payload: CreateUserInput,
-    db: AsyncSession = Depends(get_db)
+    response: Response, payload: CreateUserInput, db: AsyncSession = Depends(get_db)
 ) -> str:
     """
     thsi route usr for register user and create database new record
     """
-    
-    
+    new_user = UserModel(
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        email=payload.email,
+        phone_number=payload.phone_number,
+        password_hash=hash(payload.password),
+    )
+
+    user = check_user(db, payload.phone_number, payload.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="email or phone number exist"
+        )
+
+    try:
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+
+        access_token = create_access_token(new_user.id)
+        refresh_token = create_refresh_token(new_user.id)
+
+        response.set_cookie(key="access_token", value=access_token)
+        response.set_cookie(key="refresh_token", value=refresh_token)
+
+        return "your register successfully"
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="register was failed"
+        )

@@ -2,9 +2,12 @@ from fastapi import FastAPI, Request
 from fastapi_swagger import patch_fastapi
 from contextlib import asynccontextmanager
 from app.db.engine import Base, engine
+
 # from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import time
+
+from app.routers.auth_routers import auth_router
 
 
 @asynccontextmanager
@@ -63,4 +66,4 @@ async def add_process_time_header(request: Request, call_next):
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
-app.include_router()
+app.include_router(auth_router)
