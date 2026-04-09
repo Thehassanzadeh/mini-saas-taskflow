@@ -7,7 +7,9 @@ from app.db.engine import Base, engine
 from fastapi.middleware.gzip import GZipMiddleware
 import time
 
+
 from app.routers.auth_routers import auth_router
+
 
 
 @asynccontextmanager
@@ -15,11 +17,25 @@ async def lifespan(app: FastAPI):
     """
     simple function for run and stop app
     """
-    print(" ******************  start app successfully   ****************** ")
+    
+    print(
+        """
+
+        ******************  start app successfully  ******************
+        
+        """
+    )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
-    print(" ******************  app was shutdown   ****************** ")
+    print(
+    """
+
+        ******************  app was shutdown   ******************
+    
+    """
+    )
+
 
 
 tags_metadata = [

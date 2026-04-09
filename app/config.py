@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     SQLALCHEMY_DATABASE_URL: str
     JWT_SECRET: str
     JWT_ALG: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: str
-    REFRESH_TOKEN_EXPIRE_MINUTES: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    REFRESH_TOKEN_EXPIRE_MINUTES: int
 
     model_config = SettingsConfigDict(
         env_file=APP_DIR / ".env",

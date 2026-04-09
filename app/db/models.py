@@ -30,7 +30,16 @@ class UserModel(Base):
 
     teams: Mapped[List["TeamUser"]] = relationship("TeamUser", back_populates="user")
 
-    tasks: Mapped[List["UserTask"]] = relationship("UserTask", back_populates="user")
+    tasks: Mapped[List["UserTask"]] = relationship(
+        "UserTask",
+        back_populates="user",
+        foreign_keys="UserTask.user_id",
+    )
+
+    assigned_tasks: Mapped[List["UserTask"]] = relationship(
+        "UserTask",
+        foreign_keys="UserTask.assigned_by_id",
+    )
 
     password_hash: Mapped[str] = mapped_column(sa.String(255), nullable=False)
 
@@ -128,7 +137,7 @@ class TaskModel(Base):
 
 
 class TeamUser(Base):
-    __tablename__ = "task_user"
+    __tablename__ = "team_user"
 
     user_id: Mapped[UUID] = mapped_column(sa.ForeignKey("users.id"), primary_key=True)
     team_id: Mapped[UUID] = mapped_column(sa.ForeignKey("teams.id"), primary_key=True)
@@ -151,21 +160,40 @@ class TeamUser(Base):
 class UserTask(Base):
     __tablename__ = "user_task"
 
-    user_id: Mapped[UUID] = mapped_column(sa.ForeignKey("users.id"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey("users.id"),
+        primary_key=True,
+    )
 
-    task_id: Mapped[UUID] = mapped_column(sa.ForeignKey("tasks.id"), primary_key=True)
+    task_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey("tasks.id"),
+        primary_key=True,
+    )
 
-    user: Mapped["UserModel"] = relationship("UserModel", back_populates="tasks")
-
-    task: Mapped["TaskModel"] = relationship("TaskModel", back_populates="users")
+    assigned_by_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey("users.id"),
+        nullable=True,
+    )
 
     assigned_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=sa.func.now(),
     )
 
-    assigned_by_id: Mapped[UUID] = mapped_column(
-        sa.ForeignKey("users.id"), nullable=True
+    user: Mapped["UserModel"] = relationship(
+        "UserModel",
+        back_populates="tasks",
+        foreign_keys=[user_id],
+    )
+
+    assigned_by: Mapped["UserModel"] = relationship(
+        "UserModel",
+        foreign_keys=[assigned_by_id],
+    )
+
+    task: Mapped["TaskModel"] = relationship(
+        "TaskModel",
+        back_populates="users",
     )
 
 

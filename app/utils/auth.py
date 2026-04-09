@@ -132,10 +132,12 @@ def create_access_token(
     now = datetime.now(timezone.utc)
 
     payload = {
-        "user_id": subject,
+        "sub": subject,
         "type": "access",
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=expires_minutes)).timestamp()),
+        "iss": "mini-saas",
+        "aud": "mini-saas-api"
     }
     return jwt.encode(payload, env.JWT_SECRET, algorithm=env.JWT_ALG)
 
@@ -150,9 +152,11 @@ def create_refresh_token(
     now = datetime.now(timezone.utc)
 
     payload = {
-        "user_id": subject,
+        "sub": subject,
         "type": "refresh",
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=expires_minutes)).timestamp()),
+        "iss": "mini-saas",
+        "aud": "mini-saas-api"
     }
     return jwt.encode(payload, env.JWT_SECRET, algorithm=env.JWT_ALG)

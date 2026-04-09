@@ -28,7 +28,8 @@ DELETE /auth/sessions/{session_id}
 
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, status, Depends, HTTPException, Response
+from fastapi import APIRouter, status, Depends, HTTPException, Response, Request
+from fastapi.security import
 
 from app.db.models import UserModel
 from app.schema._input import CreateUserInput
@@ -42,7 +43,14 @@ from app.utils.auth import check_user, create_access_token, create_refresh_token
 auth_router = APIRouter(prefix="/api/v1")
 
 
-@auth_router.post("/auth/register", status_code=status.HTTP_201_CREATED, tags=["users"])
+COOKIE_KWARGS = {
+    "path": "/",
+    "httponly": True,
+}
+
+
+
+@auth_router.post("/auth/register", status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def create_user(
     response: Response, payload: CreateUserInput, db: AsyncSession = Depends(get_db)
 ) -> str:
@@ -57,8 +65,8 @@ async def create_user(
         password_hash=hash(payload.password),
     )
 
-    user = check_user(db, payload.phone_number, payload.email)
-    if not user:
+    user = await check_user(db, payload.phone_number, payload.email)
+    if  user == False:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="email or phone number exist"
         )
@@ -68,14 +76,21 @@ async def create_user(
         await db.commit()
         await db.refresh(new_user)
 
-        access_token = create_access_token(new_user.id)
-        refresh_token = create_refresh_token(new_user.id)
+        access_token = create_access_token(subject=str(new_user.id))
+        refresh_token = create_refresh_token(subject=str(new_user.id))
 
-        response.set_cookie(key="access_token", value=access_token)
-        response.set_cookie(key="refresh_token", value=refresh_token)
+        response.set_cookie(key="access_token", value=access_token, **COOKIE_KWARGS)
+        response.set_cookie(key="refresh_token", value=refresh_token, **COOKIE_KWARGS)
 
         return "your register successfully"
-    except:
+    
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="register was failed"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"register was failed, error:{e}"
         )
+
+
+@auth_router.post("/auth/login", status_code=status.HTTP_200_OK, tags=["auth"])
+def login_user(
+    request: Request, response: Response, 
+)

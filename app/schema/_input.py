@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr, field_serializer
+from pydantic import BaseModel, Field, EmailStr, field_serializer, model_validator
 
 import re
 
@@ -17,10 +17,6 @@ class CreateUserInput(BaseModel):
     )
 
     phone_number: str = Field(
-        title="Phone Number", description="input your phone number"
-    )
-
-    phone_number: str = Field(
         title="Phone Number",
         description="input your mobile number",
         pattern=r"^09\d{9}$",
@@ -32,8 +28,24 @@ class CreateUserInput(BaseModel):
         min_length=8,
         max_length=64,
     )
+    password_confirm: str = Field(
+        title="password confirm",
+        description="input your password again",
+        min_length=8,
+        max_length=64,
+    )
 
-    @field_serializer("fist_name")
+    @model_validator(mode="after")
+    def password_match(self):
+        """
+        this function use for confirm password
+        """
+        
+        if self.password != self.password_confirm:
+            raise ValueError("your password dose not match")
+        return self
+
+    @field_serializer("first_name")
     def first_name_serializer(self, value):
         """
         use for make first name capital
