@@ -5,7 +5,7 @@ main file for authentication logic
 import time
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import HTTPException, status, Request, Depends
@@ -29,17 +29,16 @@ async def get_user(db: AsyncSession, user_id: str):
     return result.scalar_one_or_none()
 
 
-async def check_user(db: AsyncSession, phone_number: str, email: str):
+async def check_user(db: AsyncSession, identifier: str):
     """
     simple function for check user from database if exist
     """
 
-    phone_check = select(UserModel).where(UserModel.phone_number == phone_number)
-    email_check = select(UserModel).where(UserModel.email == email)
-    phone_result = await db.execute(phone_check)
-    email_result = await db.execute(email_check)
-    if (phone_result is None) and (email_result is None):
-        return True
+    user_check = select(UserModel).where(
+        or_(UserModel.email == identifier, UserModel.phone_number == identifier)
+    )
+    result = await db.execute(user_check)
+    return result.scalar_one_or_none()
 
 
 async def authenticated_user(db: AsyncSession, user_id: str, password: str):
@@ -72,7 +71,7 @@ async def get_authenticated_user(request: Request, db: AsyncSession = Depends(ge
 
     try:
         decoded = jwt.decode(token, env.JWT_SECRET, algorithms=env.JWT_ALG)
-        user_id = decoded.get("user_id", None)
+        user_id = decoded.get("sub", None)
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
@@ -82,6 +81,51 @@ async def get_authenticated_user(request: Request, db: AsyncSession = Depends(ge
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
             )
         if decoded.get("type") == "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
+            )
+        stmt = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    except InvalidSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token"
+        )
+    except DecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="decoded token failed"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"authentication has failed, error: {e}",
+        )
+
+
+async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    this function use for refreshing token by get access token from cookie
+    """
+
+    token = request.cookies.get("refresh_token")
+    if token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh token not found"
+        )
+
+    try:
+        decoded = jwt.decode(token, env.JWT_SECRET, algorithms=env.JWT_ALG)
+        user_id = decoded.get("sub", None)
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
+            )
+        if time.time() > datetime.fromtimestamp(decoded.get("exp")):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
+            )
+        if decoded.get("type") == "access":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
             )
@@ -137,7 +181,7 @@ def create_access_token(
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=expires_minutes)).timestamp()),
         "iss": "mini-saas",
-        "aud": "mini-saas-api"
+        "aud": "mini-saas-api",
     }
     return jwt.encode(payload, env.JWT_SECRET, algorithm=env.JWT_ALG)
 
@@ -157,6 +201,6 @@ def create_refresh_token(
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=expires_minutes)).timestamp()),
         "iss": "mini-saas",
-        "aud": "mini-saas-api"
+        "aud": "mini-saas-api",
     }
     return jwt.encode(payload, env.JWT_SECRET, algorithm=env.JWT_ALG)

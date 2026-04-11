@@ -37,8 +37,7 @@ class UserModel(Base):
     )
 
     assigned_tasks: Mapped[List["UserTask"]] = relationship(
-        "UserTask",
-        foreign_keys="UserTask.assigned_by_id",
+        "UserTask", foreign_keys="UserTask.assigned_by_id", back_populates="assigned_by"
     )
 
     password_hash: Mapped[str] = mapped_column(sa.String(255), nullable=False)
@@ -189,6 +188,7 @@ class UserTask(Base):
     assigned_by: Mapped["UserModel"] = relationship(
         "UserModel",
         foreign_keys=[assigned_by_id],
+        back_populates="assigned_tasks",
     )
 
     task: Mapped["TaskModel"] = relationship(

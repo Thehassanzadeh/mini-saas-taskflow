@@ -26,37 +26,55 @@ GET /auth/sessions
 DELETE /auth/sessions/{session_id}
 """
 
+##############################################
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, status, Depends, HTTPException, Response, Request
-from fastapi.security import
+from fastapi.security import HTTPBearer
+
+from sqlalchemy import select
 
 from app.db.models import UserModel
-from app.schema._input import CreateUserInput
+
+from app.schema._input import CreateUserInput, LoginInput
+
+from app.schema._output import LoginOutput
+
 from app.db.engine import get_db
+from app.utils.password import hash_password as hash, verify_password as vp
+
+from app.utils.auth import (
+    check_user,
+    create_access_token,
+    create_refresh_token,
+)
+
+##############################################
 
 
-from app.utils.password import hash_password as hash
-
-from app.utils.auth import check_user, create_access_token, create_refresh_token
-
-auth_router = APIRouter(prefix="/api/v1")
+auth_router = APIRouter(prefix="/api/v1/auth")
+security = HTTPBearer()
 
 
 COOKIE_KWARGS = {
     "path": "/",
     "httponly": True,
+    "secure": True,
+    "samesite": "lax",
 }
 
 
+###############################################
 
-@auth_router.post("/auth/register", status_code=status.HTTP_201_CREATED, tags=["auth"])
+
+@auth_router.post("/register", status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def create_user(
     response: Response, payload: CreateUserInput, db: AsyncSession = Depends(get_db)
-) -> str:
+):
     """
     thsi route usr for register user and create database new record
     """
+
     new_user = UserModel(
         first_name=payload.first_name,
         last_name=payload.last_name,
@@ -65,8 +83,10 @@ async def create_user(
         password_hash=hash(payload.password),
     )
 
-    user = await check_user(db, payload.phone_number, payload.email)
-    if  user == False:
+    # check user exist
+    identifier = payload.email or payload.phone_number
+    user = await check_user(db, identifier)
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="email or phone number exist"
         )
@@ -83,14 +103,51 @@ async def create_user(
         response.set_cookie(key="refresh_token", value=refresh_token, **COOKIE_KWARGS)
 
         return "your register successfully"
-    
+
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=f"register was failed, error:{e}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"register was failed, error:{e}",
         )
 
 
-@auth_router.post("/auth/login", status_code=status.HTTP_200_OK, tags=["auth"])
-def login_user(
-    request: Request, response: Response, 
+@auth_router.post(
+    "/login", status_code=status.HTTP_200_OK, response_model=LoginOutput, tags=["auth"]
 )
+async def login_user(
+    response: Response, payload: LoginInput, db: AsyncSession = Depends(get_db)
+):
+    """
+    this route use for login user by email or phone number whit password
+    """
+
+    identifier = payload.phone_number or payload.email
+    if not identifier:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="phone number or email must be input",
+        )
+
+    user = await check_user(db, identifier)
+
+    if not user or not vp(payload.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid input, user info or password is wrong",
+        )
+
+    # create token
+    access_token = create_access_token(subject=str(user.id))
+    refresh_token = create_refresh_token(subject=str(user.id))
+
+    # set cookies
+    response.set_cookie(key="access_token", value=access_token, **COOKIE_KWARGS)
+    response.set_cookie(key="refresh_token", value=refresh_token, **COOKIE_KWARGS)
+
+    return {
+        "message": "Login successful",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+        },
+    }

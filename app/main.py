@@ -11,31 +11,25 @@ import time
 from app.routers.auth_routers import auth_router
 
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     simple function for run and stop app
     """
-    
-    print(
-        """
+
+    print("""
 
         ******************  start app successfully  ******************
         
-        """
-    )
+        """)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
-    print(
-    """
+    print("""
 
         ******************  app was shutdown   ******************
     
-    """
-    )
-
+    """)
 
 
 tags_metadata = [

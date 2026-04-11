@@ -1,5 +1,12 @@
-from pydantic import BaseModel, Field, EmailStr, field_serializer, model_validator
-
+from pydantic import (
+    BaseModel,
+    Field,
+    EmailStr,
+    field_serializer,
+    model_validator,
+    field_validator,
+)
+from typing import Optional
 import re
 
 
@@ -40,7 +47,7 @@ class CreateUserInput(BaseModel):
         """
         this function use for confirm password
         """
-        
+
         if self.password != self.password_confirm:
             raise ValueError("your password dose not match")
         return self
@@ -58,3 +65,41 @@ class CreateUserInput(BaseModel):
         use for make last name capital
         """
         return value.capitalize()
+
+
+class LoginInput(BaseModel):
+    """
+    this class use for login data which user input like email, phone number and password
+    """
+
+    email: Optional[EmailStr] = Field(
+        default=None, title="Email", description="input your email"
+    )
+
+    phone_number: Optional[str] = Field(
+        title="Phone Number",
+        description="input your mobile number",
+        pattern=r"^09\d{9}$",
+    )
+
+    password: str = Field(
+        title="Password",
+        description="input your password",
+        min_length=8,
+        max_length=64,
+    )
+
+    @field_validator("email", "phone_number", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, value):
+        if value == "":
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def validate_email_or_phone(self):
+        if not self.email and not self.phone_number:
+            raise ValueError("Either email or phone number must be provided")
+        if self.email and self.phone_number:
+            raise ValueError("Provide only one of email or phone number")
+        return self
