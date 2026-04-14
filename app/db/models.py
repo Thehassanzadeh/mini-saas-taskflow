@@ -209,3 +209,21 @@ class RoleModel(Base):
     )
 
     description: Mapped[str] = mapped_column(nullable=True)
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_token"
+
+    id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+    user_id: Mapped[UUID] = mapped_column(sa.ForeignKey("users.id"), primary_key=True)
+
+    token: Mapped[str] = mapped_column(unique=True, nullable=False)
+
+    expires_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    revoked: Mapped[bool] = mapped_column(sa.Boolean, default=False)

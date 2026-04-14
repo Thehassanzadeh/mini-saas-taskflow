@@ -2,6 +2,8 @@
 main file for authentication logic
 """
 
+#####################################
+
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -11,12 +13,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status, Request, Depends
 
 import jwt
-from jwt.exceptions import DecodeError, InvalidSignatureError
+from jwt.exceptions import (
+    DecodeError,
+    InvalidSignatureError,
+    ExpiredSignatureError,
+    InvalidTokenError,
+    InvalidAudienceError,
+    InvalidIssuerError,
+    MissingRequiredClaimError,
+)
 
-from app.utils.password import verify_password as verify
+from app.utils.password import verify_password as vp
+from app.utils.hash_refresh_token import verify_token as vt, hash_refresh_token as ht
 from app.db.engine import get_db
 from app.config import settings as env
-from app.db.models import UserModel, TeamUser
+from app.db.models import UserModel, TeamUser, RefreshToken
+
+from uuid import UUID
+
+#####################################
 
 
 async def get_user(db: AsyncSession, user_id: str):
@@ -27,6 +42,59 @@ async def get_user(db: AsyncSession, user_id: str):
     stmt = select(UserModel).where(UserModel.id == user_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def store_refresh_token(db: AsyncSession, token: str, user_id: UUID):
+    """
+    this function use for write refresh token in database
+    """
+
+    expires_at = datetime.now() + timedelta(minutes=env.REFRESH_TOKEN_EXPIRE_MINUTES)
+    hashed_token = ht(token)
+    new_token = RefreshToken(
+        user_id=user_id, token=hashed_token, expires_at=expires_at, revoked=False
+    )
+
+    try:
+        db.add(new_token)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to store refresh token",
+        )
+
+
+async def revoke_refresh_token(db: AsyncSession, token: str, user_id: UUID):
+    """
+    this function revoked refresh token in database
+    """
+    stmt = select(RefreshToken).where(RefreshToken.user_id == user_id)
+    result = await db.execute(stmt)
+
+    refresh = result.scalars().all()
+
+    found = False
+    for t in refresh:
+        if (
+            not t.revoked
+            and t.expires_at > datetime.now(timezone.utc)
+            and vt(token, t.token)
+        ):
+            t.revoked = True
+            found = True
+            break
+
+    if found:
+        try:
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to revoke refresh token",
+            )
 
 
 async def check_user(db: AsyncSession, identifier: str):
@@ -43,7 +111,7 @@ async def check_user(db: AsyncSession, identifier: str):
 
 async def authenticated_user(db: AsyncSession, user_id: str, password: str):
     """
-    this function use for get verify user
+    this function use for get vp user
     """
 
     user = await get_user(db, user_id)
@@ -52,7 +120,7 @@ async def authenticated_user(db: AsyncSession, user_id: str, password: str):
             status_code=status.HTTP_404_NOT_FOUND, detail="user or password not found"
         )
 
-    password_check = await verify(password, user.password_hash)
+    password_check = await vp(password, user.password_hash)
     if not password_check:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="user or password not found"
@@ -103,49 +171,99 @@ async def get_authenticated_user(request: Request, db: AsyncSession = Depends(ge
         )
 
 
+def decode_refresh_token(token: str):
+    """
+    decode refresh token logic here
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            env.JWT_SECRET,
+            algorithms=[env.JWT_ALG],
+            audience="mini-saas-api",
+            issuer="mini-saas",
+            options={"require": ["sub", "exp", "iat", "type", "iss", "aud"]},
+        )
+
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token type"
+            )
+
+        return payload
+
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="refresh token expired",
+        )
+
+    except (
+        InvalidAudienceError,
+        InvalidIssuerError,
+        MissingRequiredClaimError,
+        InvalidTokenError,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid refresh token",
+        )
+
+
 async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
     """
     this function use for refreshing token by get access token from cookie
     """
 
+    # get token from cookies
     token = request.cookies.get("refresh_token")
-    if token is None:
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh token not found"
         )
 
-    try:
-        decoded = jwt.decode(token, env.JWT_SECRET, algorithms=env.JWT_ALG)
-        user_id = decoded.get("sub", None)
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
-            )
-        if time.time() > datetime.fromtimestamp(decoded.get("exp")):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
-            )
-        if decoded.get("type") == "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
-            )
-        stmt = select(UserModel).where(UserModel.id == user_id)
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
+    payload = decode_refresh_token(token)
 
-    except InvalidSignatureError:
+    user_id = payload.get("sub")
+    if not user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user id in token"
         )
-    except DecodeError:
+
+    # UUID validation
+    try:
+        user_id = UUID(user_id)
+    except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="decoded token failed"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid user id in token"
         )
-    except Exception as e:
+
+    # database check for refresh token
+    stmt = select(RefreshToken).where(
+        RefreshToken.user_id == user_id,
+        RefreshToken.token == token,
+        RefreshToken.revoked.is_(False),
+    )
+    result = await db.execute(stmt)
+    stored_token = result.scalar_one_or_none()
+
+    if stored_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"authentication has failed, error: {e}",
+            detail="refresh token revoked or not recognized",
         )
+
+    stmt = select(UserModel).where(UserModel.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="user not found",
+        )
+
+    return user
 
 
 async def get_authenticated_admin(

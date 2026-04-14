@@ -29,7 +29,7 @@ DELETE /auth/sessions/{session_id}
 ##############################################
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, status, Depends, HTTPException, Response, Request
+from fastapi import APIRouter, status, Depends, HTTPException, Response, Request, Cookie
 from fastapi.security import HTTPBearer
 
 from sqlalchemy import select
@@ -47,6 +47,9 @@ from app.utils.auth import (
     check_user,
     create_access_token,
     create_refresh_token,
+    store_refresh_token,
+    revoke_refresh_token,
+    decode_refresh_token,
 )
 
 ##############################################
@@ -86,7 +89,7 @@ async def create_user(
     # check user exist
     identifier = payload.email or payload.phone_number
     user = await check_user(db, identifier)
-    if user is None:
+    if user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="email or phone number exist"
         )
@@ -101,6 +104,8 @@ async def create_user(
 
         response.set_cookie(key="access_token", value=access_token, **COOKIE_KWARGS)
         response.set_cookie(key="refresh_token", value=refresh_token, **COOKIE_KWARGS)
+
+        await store_refresh_token(db, refresh_token, new_user.id)
 
         return "your register successfully"
 
@@ -144,6 +149,9 @@ async def login_user(
     response.set_cookie(key="access_token", value=access_token, **COOKIE_KWARGS)
     response.set_cookie(key="refresh_token", value=refresh_token, **COOKIE_KWARGS)
 
+    # store refresh token
+    await store_refresh_token(db, refresh_token, user.id)
+
     return {
         "message": "Login successful",
         "user": {
@@ -151,3 +159,25 @@ async def login_user(
             "email": user.email,
         },
     }
+
+
+@auth_router.post("/logout", status_code=status.HTTP_200_OK, tags=["auth"])
+async def logout_user(
+    response: Response,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    refresh_token: str | None = Cookie(default=None),
+):
+    """
+    this route logout user by delete cookies and invalidate refresh token
+    """
+
+    payload = decode_refresh_token(request.cookies.get("refresh_token"))
+    user_id = payload.get("sub")
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+
+    if refresh_token:
+        await revoke_refresh_token(db, refresh_token, user_id)
+
+    return {"message": "logout successfully"}
