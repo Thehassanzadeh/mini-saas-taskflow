@@ -103,3 +103,12 @@ class LoginInput(BaseModel):
         if self.email and self.phone_number:
             raise ValueError("Provide only one of email or phone number")
         return self
+
+
+
+class OtpVerifyInput(BaseModel):
+    """
+    user input get otp code from user
+    """
+    code: int
+

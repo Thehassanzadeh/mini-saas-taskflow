@@ -218,7 +218,7 @@ class RefreshToken(Base):
         sa.UUID(as_uuid=True), primary_key=True, default=uuid4
     )
 
-    user_id: Mapped[UUID] = mapped_column(sa.ForeignKey("users.id"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(sa.ForeignKey("users.id"), index =True, nullable=False)
 
     token: Mapped[str] = mapped_column(unique=True, nullable=False)
 
@@ -227,3 +227,81 @@ class RefreshToken(Base):
     )
 
     revoked: Mapped[bool] = mapped_column(sa.Boolean, default=False)
+
+
+class OTP(Base):
+    __tablename__ = "otp"
+
+    id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+    user_id: Mapped[UUID | None] = mapped_column(
+        sa.ForeignKey("users.id"), index=True, nullable=True
+    )
+
+    channel: Mapped[str] = mapped_column(
+        nullable=False,
+    )
+
+    target: Mapped[str] = mapped_column(
+        sa.String(255),
+        nullable=False,
+        index=True,
+    )
+
+    purpose: Mapped[str] = mapped_column(
+        nullable=False,
+        index=True,
+    )
+
+    __table_args__ = (
+    sa.CheckConstraint(
+        "channel IN ('sms', 'email')", name="otp_channel"
+    ),
+    sa.CheckConstraint(
+        "purpose IN ('login', 'verify_email', 'verify_phone', 'reset_password')", name="otp_purpose"
+    ),
+    sa.Index(
+        "ix_otp_target_purpose_channel", "target", "purpose", "channel"
+    ),
+    )
+
+    code_hash: Mapped[str] = mapped_column(
+        sa.String(255),
+        nullable=False,
+    )
+
+    attempts: Mapped[int] = mapped_column(
+        sa.Integer,
+        nullable=False,
+        default=0,
+    )
+
+    is_used: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+
+    last_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=sa.func.now(),
+        nullable=False,
+    )

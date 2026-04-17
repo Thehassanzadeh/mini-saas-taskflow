@@ -18,7 +18,7 @@ GET /users/me/tasks # list tasks assigned to user
 """
 
 from fastapi import APIRouter, HTTPException, status, Depends, 
-from app.schema._input import CreateUserInput
+from app.schema._auth_input import CreateUserInput
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.engine import get_db
 

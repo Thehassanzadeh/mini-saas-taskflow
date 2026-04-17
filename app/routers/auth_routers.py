@@ -36,9 +36,9 @@ from sqlalchemy import select
 
 from app.db.models import UserModel
 
-from app.schema._input import CreateUserInput, LoginInput
+from app.schema._auth_input import CreateUserInput, LoginInput
 
-from app.schema._output import LoginOutput
+from app.schema._auth_output import LoginOutput
 
 from app.db.engine import get_db
 from app.utils.password import hash_password as hash, verify_password as vp
@@ -50,6 +50,8 @@ from app.utils.auth import (
     store_refresh_token,
     revoke_refresh_token,
     decode_refresh_token,
+    get_user_refresh_token
+    
 )
 
 ##############################################
@@ -181,3 +183,41 @@ async def logout_user(
         await revoke_refresh_token(db, refresh_token, user_id)
 
     return {"message": "logout successfully"}
+
+
+@auth_router.post("/refresh",status_code=status.HTTP_201_CREATED, tags=["auth"])
+async def refresh_token_from_access_token(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    this route use refresh token and validate it for create new access token
+    """
+    user = await get_user_refresh_token(request, db)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail= "user not found"
+        )
+    
+    print (logout_user)
+    access_token = create_access_token(subject=str(user.id),)
+
+    response.set_cookie(key="access_token", value=access_token, **COOKIE_KWARGS)
+    return True
+
+
+
+
+#######################
+# POST /auth/otp/request
+# POST /auth/otp/verify
+# POST /auth/otp/resend
+################
+
+
+@auth_router.post("/otp/request", status_code=status.HTTP_200_OK, tags=["auth"])
+def send_otp_sms(
+    user
+)

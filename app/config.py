@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     JWT_ALG: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_MINUTES: int
+    SMS_IR_API_KAY_OTP: str
+    LINE_NUMBER_OTP: int
 
     model_config = SettingsConfigDict(
         env_file=APP_DIR / ".env",

@@ -24,7 +24,7 @@ from jwt.exceptions import (
 )
 
 from app.utils.password import verify_password as vp
-from app.utils.hash_refresh_token import verify_token as vt, hash_refresh_token as ht
+from app.utils.hash_refresh_token import hash_refresh_token as ht
 from app.db.engine import get_db
 from app.config import settings as env
 from app.db.models import UserModel, TeamUser, RefreshToken
@@ -76,11 +76,12 @@ async def revoke_refresh_token(db: AsyncSession, token: str, user_id: UUID):
     refresh = result.scalars().all()
 
     found = False
+    hash_token = ht(token)
     for t in refresh:
         if (
             not t.revoked
             and t.expires_at > datetime.now(timezone.utc)
-            and vt(token, t.token)
+            and hash_token, t.token
         ):
             t.revoked = True
             found = True
@@ -210,7 +211,7 @@ def decode_refresh_token(token: str):
         )
 
 
-async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_user_refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
     """
     this function use for refreshing token by get access token from cookie
     """
@@ -239,9 +240,10 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
         )
 
     # database check for refresh token
+    hash_token = ht(token)
     stmt = select(RefreshToken).where(
         RefreshToken.user_id == user_id,
-        RefreshToken.token == token,
+        RefreshToken.token == hash_token,
         RefreshToken.revoked.is_(False),
     )
     result = await db.execute(stmt)
