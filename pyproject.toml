@@ -17,6 +17,9 @@ dependencies = [
   "pyjwt[crypto]>=2.11.0",
   "pwdlib[argon2]>=0.3.0",
   "fastapi-swagger>=0.4.44",
+  "humanize>=4.15.0",
+  "smsir-python>=1.0.8",
+  "requests>=2.33.1",
 ]
 
 [dependency-groups]
