@@ -29,16 +29,25 @@ DELETE /auth/sessions/{session_id}
 ##############################################
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, status, Depends, HTTPException, Response, Request, Cookie
+from fastapi import (
+    APIRouter,
+    status,
+    Depends,
+    HTTPException,
+    Response,
+    Request,
+    Cookie,
+    Path,
+)
 from fastapi.security import HTTPBearer
 
-from sqlalchemy import select
 
+from app.services.users import UsersOperation
 from app.db.models import UserModel
 
-from app.schema._auth_input import CreateUserInput, LoginInput
+from app.schema._input import CreateUserInput, LoginInput
 
-from app.schema._auth_output import LoginOutput
+from app.schema._output import LoginOutput
 
 from app.db.engine import get_db
 from app.utils.password import hash_password as hash, verify_password as vp
@@ -50,9 +59,10 @@ from app.utils.auth import (
     store_refresh_token,
     revoke_refresh_token,
     decode_refresh_token,
-    get_user_refresh_token
-    
+    get_user_refresh_token,
 )
+
+from app.utils.smsir import generate_code, send_otp_sms
 
 ##############################################
 
@@ -185,7 +195,7 @@ async def logout_user(
     return {"message": "logout successfully"}
 
 
-@auth_router.post("/refresh",status_code=status.HTTP_201_CREATED, tags=["auth"])
+@auth_router.post("/refresh", status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def refresh_token_from_access_token(
     request: Request,
     response: Response,
@@ -197,17 +207,16 @@ async def refresh_token_from_access_token(
     user = await get_user_refresh_token(request, db)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail= "user not found"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="user not found"
         )
-    
-    print (logout_user)
-    access_token = create_access_token(subject=str(user.id),)
+
+    print(logout_user)
+    access_token = create_access_token(
+        subject=str(user.id),
+    )
 
     response.set_cookie(key="access_token", value=access_token, **COOKIE_KWARGS)
     return True
-
-
 
 
 #######################
@@ -217,7 +226,47 @@ async def refresh_token_from_access_token(
 ################
 
 
-@auth_router.post("/otp/request", status_code=status.HTTP_200_OK, tags=["auth"])
-def send_otp_sms(
-    user
+@auth_router.post(
+    "/otp/request/{phone_number}", status_code=status.HTTP_200_OK, tags=["auth"]
 )
+async def send_otp_by_sms(phone_number: str = Path(), db: AsyncSession = Depends(get_db)):
+    """
+    Send OTP via SMS
+    """
+    try:
+        send_message =  await UsersOperation(db).send_verification_sms(phone_number=phone_number)
+        return send_message
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
+        )
+
+
+@auth_router.post("/otp/verify", status_code=status.HTTP_200_OK, tags=["auth"])
+async def verify_otp_by_sms(phone_number: str, code: str, db: AsyncSession = Depends(get_db)):
+    """
+    verify otp which sent with sms
+    """
+    try:
+        verify = await UsersOperation(db).complete_otp(code=code, phone_number=phone_number)
+        return verify
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail={"error": str(e)})
+    
+
+
+@auth_router.post(
+    "/otp/resend/{phone_number}", status_code=status.HTTP_200_OK, tags=["auth"]
+)
+async def resend_otp_by_sms(phone_number: str = Path(), db: AsyncSession = Depends(get_db)):
+    """
+    Resend OTP via SMS
+    """
+    try:
+        send_message =  await UsersOperation(db).send_verification_sms(phone_number=phone_number)
+        return send_message
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
+        )

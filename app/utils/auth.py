@@ -79,9 +79,8 @@ async def revoke_refresh_token(db: AsyncSession, token: str, user_id: UUID):
     hash_token = ht(token)
     for t in refresh:
         if (
-            not t.revoked
-            and t.expires_at > datetime.now(timezone.utc)
-            and hash_token, t.token
+            not t.revoked and t.expires_at > datetime.now(timezone.utc) and hash_token,
+            t.token,
         ):
             t.revoked = True
             found = True

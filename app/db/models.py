@@ -218,7 +218,9 @@ class RefreshToken(Base):
         sa.UUID(as_uuid=True), primary_key=True, default=uuid4
     )
 
-    user_id: Mapped[UUID] = mapped_column(sa.ForeignKey("users.id"), index =True, nullable=False)
+    user_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey("users.id"), index=True, nullable=False
+    )
 
     token: Mapped[str] = mapped_column(unique=True, nullable=False)
 
@@ -256,15 +258,12 @@ class OTP(Base):
     )
 
     __table_args__ = (
-    sa.CheckConstraint(
-        "channel IN ('sms', 'email')", name="otp_channel"
-    ),
-    sa.CheckConstraint(
-        "purpose IN ('login', 'verify_email', 'verify_phone', 'reset_password')", name="otp_purpose"
-    ),
-    sa.Index(
-        "ix_otp_target_purpose_channel", "target", "purpose", "channel"
-    ),
+        sa.CheckConstraint("channel IN ('sms', 'email')", name="otp_channel"),
+        sa.CheckConstraint(
+            "purpose IN ('login', 'verify_email', 'verify_phone', 'reset_password')",
+            name="otp_purpose",
+        ),
+        sa.Index("ix_otp_target_purpose_channel", "target", "purpose", "channel"),
     )
 
     code_hash: Mapped[str] = mapped_column(

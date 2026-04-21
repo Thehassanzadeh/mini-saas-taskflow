@@ -105,10 +105,9 @@ class LoginInput(BaseModel):
         return self
 
 
-
 class OtpVerifyInput(BaseModel):
     """
     user input get otp code from user
     """
-    code: int
 
+    code: int

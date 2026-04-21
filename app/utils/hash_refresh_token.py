@@ -2,7 +2,8 @@
 this code hash refresh token for store in db
 """
 
-import  hashlib
+import hashlib
+
 
 def hash_refresh_token(token: str) -> str:
     """

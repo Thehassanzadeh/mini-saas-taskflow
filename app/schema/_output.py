@@ -18,3 +18,12 @@ class LoginOutput(BaseModel):
 
     message: str
     user: UserPublic
+
+
+class SmsVerificationOutput(BaseModel):
+    phone_number: str
+    prompt: str
+
+class SmsVerificationCompleteOutput(BaseModel):
+    phone_number: str
+    prompt: str
