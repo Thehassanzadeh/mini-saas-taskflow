@@ -190,6 +190,7 @@ class UsersOperation:
 
         try:
             phone_number: payload.phone_number
+            code = payload.code
 
             if phone_number is not None:
                 user.phone_number = phone_number
