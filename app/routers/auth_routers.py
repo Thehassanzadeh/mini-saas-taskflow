@@ -1,8 +1,8 @@
 """
 ✅ Authentication
-POST /auth/register # signup (create user)
-POST /auth/login # login → access + refresh token
-POST /auth/logout # logout (invalidate refresh token)
+#POST /auth/register # signup (create user)
+#POST /auth/login # login → access + refresh token
+##POST /auth/logout # logout (invalidate refresh token)
 POST /auth/refresh # refresh access token
 
 ✅ Password Management
@@ -60,9 +60,8 @@ from app.utils.auth import (
     revoke_refresh_token,
     decode_refresh_token,
     get_user_refresh_token,
+    get_authenticated_user,
 )
-
-from app.utils.smsir import generate_code, send_otp_sms
 
 ##############################################
 
@@ -219,22 +218,19 @@ async def refresh_token_from_access_token(
     return True
 
 
-#######################
-# POST /auth/otp/request
-# POST /auth/otp/verify
-# POST /auth/otp/resend
-################
-
-
 @auth_router.post(
     "/otp/request/{phone_number}", status_code=status.HTTP_200_OK, tags=["auth"]
 )
-async def send_otp_by_sms(phone_number: str = Path(), db: AsyncSession = Depends(get_db)):
+async def send_otp_by_sms(
+    phone_number: str = Path(), db: AsyncSession = Depends(get_db)
+):
     """
     Send OTP via SMS
     """
     try:
-        send_message =  await UsersOperation(db).send_verification_sms(phone_number=phone_number)
+        send_message = await UsersOperation(db).send_register_verification_sms(
+            phone_number=phone_number
+        )
         return send_message
     except Exception as e:
         raise HTTPException(
@@ -243,30 +239,46 @@ async def send_otp_by_sms(phone_number: str = Path(), db: AsyncSession = Depends
 
 
 @auth_router.post("/otp/verify", status_code=status.HTTP_200_OK, tags=["auth"])
-async def verify_otp_by_sms(phone_number: str, code: str, db: AsyncSession = Depends(get_db)):
+async def verify_otp_by_sms(
+    response: Response, phone_number: str, code: str, db: AsyncSession = Depends(get_db)
+):
     """
     verify otp which sent with sms
     """
     try:
-        verify = await UsersOperation(db).complete_otp(code=code, phone_number=phone_number)
+        verify = await UsersOperation(db).complete_otp(
+            code=code, phone_number=phone_number, response=response
+        )
         return verify
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail={"error": str(e)})
-    
+            status_code=status.HTTP_404_NOT_FOUND, detail={"error": str(e)}
+        )
 
 
 @auth_router.post(
     "/otp/resend/{phone_number}", status_code=status.HTTP_200_OK, tags=["auth"]
 )
-async def resend_otp_by_sms(phone_number: str = Path(), db: AsyncSession = Depends(get_db)):
+async def resend_otp_by_sms(
+    phone_number: str = Path(), db: AsyncSession = Depends(get_db)
+):
     """
     Resend OTP via SMS
     """
     try:
-        send_message =  await UsersOperation(db).send_verification_sms(phone_number=phone_number)
+        send_message = await UsersOperation(db).send_register_verification_sms(
+            phone_number=phone_number
+        )
         return send_message
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
         )
+
+
+@auth_router.get("/me", status_code=status.HTTP_200_OK, tags=["auth"])
+async def get_current_user(user: str = Depends(get_authenticated_user)):
+    """
+    for read current user from access token
+    """
+    return user

@@ -9,6 +9,7 @@ import time
 
 
 from app.routers.auth_routers import auth_router
+from app.routers.users_router import users_router
 
 
 @asynccontextmanager
@@ -77,3 +78,4 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 app.include_router(auth_router)
+app.include_router(users_router)

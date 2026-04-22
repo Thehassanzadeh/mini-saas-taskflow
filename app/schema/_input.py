@@ -111,3 +111,22 @@ class OtpVerifyInput(BaseModel):
     """
 
     code: int
+
+class UpdateUserInput(BaseModel):
+    """
+    for update uer info
+    """
+    first_name: Optional[str] = Field(default="ali")
+    last_name: Optional[str] = Field(default="ahmadi")
+    email: Optional[EmailStr] = Field(default="email@exampel.com")
+    
+
+class UpdatePhoneInput(BaseModel):
+    """
+    use for phone update
+    """
+    phone_number: Optional[str] = Field(
+        title="Phone Number",
+        description="input your mobile number",
+        pattern=r"^09\d{9}$",
+    )

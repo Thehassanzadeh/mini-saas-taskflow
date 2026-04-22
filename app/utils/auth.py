@@ -138,13 +138,19 @@ async def get_authenticated_user(request: Request, db: AsyncSession = Depends(ge
     token = request.cookies.get("access_token")
 
     try:
-        decoded = jwt.decode(token, env.JWT_SECRET, algorithms=env.JWT_ALG)
+        decoded = jwt.decode(
+            token,
+            env.JWT_SECRET,
+            algorithms=env.JWT_ALG,
+            audience="mini-saas-api",
+            issuer="mini-saas",
+        )
         user_id = decoded.get("sub", None)
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
             )
-        if time.time() > datetime.fromtimestamp(decoded.get("exp")):
+        if time.time() > decoded["exp"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed"
             )

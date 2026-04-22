@@ -2,38 +2,51 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.smsir import hash_otp_code as hoc, generate_code, send_otp_sms
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Response
 from uuid import UUID
 
 from app.schema._output import SmsVerificationOutput, SmsVerificationCompleteOutput
 
 from sqlalchemy import select
 
+from app.schema._input import (
+    UpdateUserInput
+)
+
 from app.db.models import OTP, UserModel
 
 from app.config import settings as env
+from app.utils.auth import (
+    create_access_token,
+    create_refresh_token,
+    store_refresh_token,
+)
 
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
 
-code = generate_code()
+COOKIE_KWARGS = {
+    "path": "/",
+    "httponly": True,
+    "secure": True,
+    "samesite": "lax",
+}
 
-
-def send_sms(phone_number: str, code: str) -> None:
-    try:
-        send_otp_sms(phone_number, code)
-    except Exception:
-        logger.warning("SMS Provider failed, printing code for %s", phone_number)
-        logger.info("SMS to %s: your verification code is %s", phone_number, code)
+# def send_sms(phone_number: str, code: str) -> None:
+#     try:
+#         send_otp_sms(phone_number, code)
+#     except Exception:
+#         logger.warning("SMS Provider failed, printing code for %s", phone_number)
+#         logger.info("SMS to %s: your verification code is %s", phone_number, code)
 
 
 class UsersOperation:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def send_verification_sms(
+    async def send_register_verification_sms(
         self, phone_number: str, channel: str = "sms", purpose: str = "OTP"
     ) -> SmsVerificationOutput:
 
@@ -42,7 +55,10 @@ class UsersOperation:
         result = await self.db.execute(stmt)
         user = result.scalar_one_or_none()
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= "user or phone number not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="user or phone number not found",
+            )
 
         otp_stmt = select(OTP).where(
             OTP.target == phone_number,
@@ -79,7 +95,9 @@ class UsersOperation:
             phone_number=phone_number, prompt="verification code sent"
         )
 
-    async def complete_otp(self, code: str, phone_number: str) -> SmsVerificationCompleteOutput:
+    async def complete_otp(
+        self, code: str, phone_number: str, response: Response
+    ) -> SmsVerificationCompleteOutput:
 
         hash_code = hoc(code)
         now = datetime.now()
@@ -102,7 +120,21 @@ class UsersOperation:
             otp_obj.is_used = True
             otp_obj.used_at = now
             await self.db.commit()
-            print  ("successfully")
+
+            # create token
+            access_token = create_access_token(subject=str(user.id))
+            refresh_token = create_refresh_token(subject=str(user.id))
+
+            # set cookies
+            response.set_cookie(key="access_token", value=access_token, **COOKIE_KWARGS)
+            response.set_cookie(
+                key="refresh_token", value=refresh_token, **COOKIE_KWARGS
+            )
+
+            # store refresh token
+            await store_refresh_token(self.db, refresh_token, user.id)
+
+            print("successfully")
             return SmsVerificationCompleteOutput(
                 phone_number=phone_number, prompt="verify successfully"
             )
@@ -110,4 +142,61 @@ class UsersOperation:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
             )
+
+    async def update_user_info(self, user: str, payload: UpdateUserInput):
+        """
+        Update user information with provided field only
         
+        Args:
+        user(User): The user information return by authentication Depends
+        payload: information which user input
+
+        Return:
+        the new user information
+        """
+
+        try:
+            first_name = payload.first_name
+            last_name = payload.last_name
+            email = payload.email
+
+            if first_name is not None:
+                user.first_name = first_name
+            if last_name is not None:
+                user.last_name = last_name
+            if user.email is not None:
+                user.email = email
+            
+            await self.db.commit()
+            await self.db.refresh(user)
+
+            return user
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
+            )
+
+    async def update_user_phone_number(self, user: str, payload: UpdatePhoneInput):
+        """
+        Update user phone number
+        
+        Args:
+        user(User): The user information return by authentication Depends
+        payload: information which user input
+
+        Return:
+        the new user information
+        """
+
+        try:
+            phone_number: payload.phone_number
+
+            if phone_number is not None:
+                user.phone_number = phone_number
+            self.db.commit()
+            self.db.refresh(user)
+            return user
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
+            )
