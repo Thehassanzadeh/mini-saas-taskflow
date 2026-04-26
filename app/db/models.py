@@ -24,6 +24,8 @@ class UserModel(Base):
 
     is_verified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
+    is_activated: Mapped[bool] = mapped_column(sa.Boolean, default=True, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sa.func.now(), nullable=False
     )
@@ -41,6 +43,11 @@ class UserModel(Base):
     )
 
     password_hash: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+
+    projects: Mapped[List["ProjectUser"]] = relationship(
+        "ProjectUser",
+        back_populates="user",
+    )
 
 
 class TeamModel(Base):
@@ -62,6 +69,11 @@ class TeamModel(Base):
         sa.ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
+    )
+
+    projects: Mapped[List["ProjectModel"]] = relationship(
+        "ProjectModel",
+        back_populates="team",
     )
 
     owner: Mapped["UserModel"] = relationship("UserModel", foreign_keys=[owner_id])
@@ -88,6 +100,32 @@ class ProjectModel(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
+
+    team_id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True),
+        sa.ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    team: Mapped["TeamModel"] = relationship(
+        "TeamModel",
+        back_populates="projects",
+    )
+
+    tasks: Mapped[List["TaskModel"]] = relationship(
+        "TaskModel",
+        back_populates="project",
+    )
+
+    users: Mapped[List["ProjectUser"]] = relationship(
+        "ProjectUser",
+        back_populates="project",
+    )
+
+    __table_args__ = (
+        sa.UniqueConstraint("id", "team_id", name="uq_project_id_team_id"),
     )
 
 
@@ -133,6 +171,18 @@ class TaskModel(Base):
     )
 
     users: Mapped[List["UserTask"]] = relationship("UserTask", back_populates="task")
+
+    project_id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True),
+        sa.ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    project: Mapped["ProjectModel"] = relationship(
+        "ProjectModel",
+        back_populates="tasks",
+    )
 
 
 class TeamUser(Base):
@@ -195,6 +245,63 @@ class UserTask(Base):
         "TaskModel",
         back_populates="users",
     )
+
+
+class ProjectUser(Base):
+    __tablename__ = "project_user"
+
+    user_id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True),
+        sa.ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+    project_id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True),
+        primary_key=True,
+    )
+
+    team_id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True),
+        nullable=False,
+        index=True,
+    )
+
+    role_id: Mapped[UUID | None] = mapped_column(
+        sa.ForeignKey("roles.id"),
+        nullable=True,
+    )
+
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=sa.func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        sa.ForeignKeyConstraint(
+            ["user_id", "team_id"],
+            ["team_user.user_id", "team_user.team_id"],
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["project_id", "team_id"],
+            ["projects.id", "projects.team_id"],
+            ondelete="CASCADE",
+        ),
+    )
+
+    user: Mapped["UserModel"] = relationship(
+        "UserModel",
+        back_populates="projects",
+    )
+
+    project: Mapped["ProjectModel"] = relationship(
+        "ProjectModel",
+        back_populates="users",
+    )
+
+    role: Mapped["RoleModel"] = relationship("RoleModel")
 
 
 class RoleModel(Base):

@@ -30,15 +30,16 @@ class SmsVerificationCompleteOutput(BaseModel):
     phone_number: str
     prompt: str
 
+
 class UserInformationOutput(BaseModel):
     id: UUID
     first_name: str
     last_name: str
     email: str
-    phone_number:str
+    phone_number: str
     is_verified: bool
     created_at: datetime
 
 
-
-
+class UserTeamsOutput(BaseModel):
+    team:str
