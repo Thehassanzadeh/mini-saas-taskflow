@@ -26,6 +26,8 @@ class UserModel(Base):
 
     is_activated: Mapped[bool] = mapped_column(sa.Boolean, default=True, nullable=False)
 
+    is_superuser: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.false())
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sa.func.now(), nullable=False
     )

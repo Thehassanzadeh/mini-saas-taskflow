@@ -20,7 +20,6 @@ from app.db.models import (
     TaskModel,
     UserTask,
     ProjectUser,
-    
 )
 
 from app.config import settings as env
@@ -319,12 +318,12 @@ class UsersOperation:
                 status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
             )
 
-    async def user_teams(self, user:str):
+    async def user_teams(self, user: str):
         """
         User teams which return all teams for user
-        
+
         Arg:
-        user: user information 
+        user: user information
 
         Return:
         a list of the team
@@ -334,19 +333,19 @@ class UsersOperation:
             result = await self.db.execute(stmt)
             teams = result.all()
             if teams is None:
-                return {
-                    "message": "no team found for this user"
-                }
+                return {"message": "no team found for this user"}
             return teams
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)})
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
+            )
 
-    async def user_projects(self, user:str):
+    async def user_projects(self, user: str):
         """
         User teams which return all teams for user
-        
+
         Arg:
-        user: user information 
+        user: user information
 
         Return:
         a list of the team
@@ -360,19 +359,19 @@ class UsersOperation:
             result = await self.db.execute(stmt)
             projects = result.all()
             if projects is None:
-                return {
-                    "message": "no team found for this user"
-                }
+                return {"message": "no team found for this user"}
             return projects
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)})
-    
-    async def user_tasks(self, user:str):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
+            )
+
+    async def user_tasks(self, user: str):
         """
         User tasks which return all tasks for user
-        
+
         Arg:
-        user: user information 
+        user: user information
 
         Return:
         a list of the task
@@ -386,10 +385,9 @@ class UsersOperation:
             result = await self.db.execute(stmt)
             tasks = result.all()
             if tasks is None:
-                return {
-                    "message": "no team found for this user"
-                }
+                return {"message": "no team found for this user"}
             return tasks
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)})
-
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(e)}
+            )

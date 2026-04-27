@@ -280,10 +280,10 @@ async def get_authenticated_admin(
     this function use for authenticated admin
     """
     user_id = user.id
-    stmt = select(TeamUser).where(TeamUser.user_id == user_id)
+    stmt = select(UserModel).where(UserModel.id == user_id)
     result = await db.execute(stmt)
     user_obj = result.scalar_one_or_none()
-    if not user_obj.role_id == 2:  # 2 is id for admin
+    if user_obj.is_superuser is False:  # true for admin
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="you are not allowed to get this",

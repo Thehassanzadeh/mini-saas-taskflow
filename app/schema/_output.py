@@ -42,4 +42,4 @@ class UserInformationOutput(BaseModel):
 
 
 class UserTeamsOutput(BaseModel):
-    team:str
+    team: str

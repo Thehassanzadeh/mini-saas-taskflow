@@ -10,6 +10,8 @@ import time
 
 from app.routers.auth_routers import auth_router
 from app.routers.users_router import users_router
+from app.routers.teams_router import teams_router
+from app.routers.admins_router import admin_router
 
 
 @asynccontextmanager
@@ -39,7 +41,7 @@ tags_metadata = [
     {"name": "teams", "description": "all teams operation"},
     {"name": "projects", "description": "all projects operation"},
     {"name": "tasks", "description": "all tasks operation"},
-    {"name": "auth", "description": "all authentication operation"},
+    {"name": "admin", "description": "all admin operation"},
 ]
 
 app = FastAPI(
@@ -79,3 +81,5 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(teams_router)
+app.include_router(admin_router)

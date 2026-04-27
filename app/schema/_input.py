@@ -8,6 +8,7 @@ from pydantic import (
 )
 from typing import Optional
 import re
+from uuid import UUID
 
 
 class CreateUserInput(BaseModel):
@@ -135,3 +136,14 @@ class UpdatePhoneInput(BaseModel):
     )
 
     code: str
+
+
+class CreateTeamInput(BaseModel):
+
+    name: str
+    description: str
+
+
+class CreateRoleInpout(BaseModel):
+    name: str
+    description: str
