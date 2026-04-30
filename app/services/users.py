@@ -309,7 +309,7 @@ class UsersOperation:
         """
 
         try:
-            user.is_activated = Fals
+            user.is_activated = False
             await self.db.commit()
 
             return {"messege": "user with successfully delete"}

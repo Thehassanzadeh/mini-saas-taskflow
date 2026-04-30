@@ -26,7 +26,9 @@ class UserModel(Base):
 
     is_activated: Mapped[bool] = mapped_column(sa.Boolean, default=True, nullable=False)
 
-    is_superuser: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.false())
+    is_superuser: Mapped[bool] = mapped_column(
+        sa.Boolean, default=False, nullable=False, server_default=sa.false()
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sa.func.now(), nullable=False
@@ -309,7 +311,7 @@ class ProjectUser(Base):
 class RoleModel(Base):
     __tablename__ = "roles"
 
-    id: Mapped[UUID] = mapped_column(
+    id: Mapped[int] = mapped_column(
         sa.UUID(as_uuid=True), primary_key=True, default=uuid4
     )
 
@@ -318,6 +320,12 @@ class RoleModel(Base):
     )
 
     description: Mapped[str] = mapped_column(nullable=True)
+
+    owner_id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True),
+        sa.ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
 
 
 class RefreshToken(Base):

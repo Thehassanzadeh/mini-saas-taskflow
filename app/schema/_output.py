@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from uuid import UUID
 from datetime import datetime
 
@@ -43,3 +43,10 @@ class UserInformationOutput(BaseModel):
 
 class UserTeamsOutput(BaseModel):
     team: str
+
+
+class SimpleUserInfoOutput(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone_number: int

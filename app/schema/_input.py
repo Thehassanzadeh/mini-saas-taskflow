@@ -144,6 +144,11 @@ class CreateTeamInput(BaseModel):
     description: str
 
 
-class CreateRoleInpout(BaseModel):
+class CreateRoleInput(BaseModel):
     name: str
     description: str
+
+
+class AddUserToTeamInput(BaseModel):
+    user_id: UUID
+    role: Optional[str] = Field(default="team-user")
