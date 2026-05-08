@@ -36,7 +36,6 @@ class ProjectOperation:
         Return:
         New project information
         """
-
         allow_stmt = (
             select(TeamUser)
             .where(
@@ -62,21 +61,25 @@ class ProjectOperation:
         try:
             new_project = ProjectModel(
                 name = payload.name,
+                team_id = team_id,
                 description = payload.description,
                 goal = payload.goal,
                 ttl = payload.ttl
             )
-            project_user = ProjectUser(
-                user_id = user.id,
-                team_id = team_id,
-                role_id = role.id
-
-            )
-
+        
             self.db.add(new_project)
-            self.db.add(project_user)
             await self.db.commit()
             await self.db.refresh(new_project)
+
+            project_user = ProjectUser(
+                user_id = user.id,
+                project_id = new_project.id,
+                team_id = team_id,
+                role_id = role.id
+            )
+
+            self.db.add(project_user)
+            await self.db.commit()
 
             return new_project
         except Exception as e:

@@ -42,8 +42,13 @@ projects_router = APIRouter(prefix="/api/v1/projects")
 @projects_router.post("", status_code=status.HTTP_200_OK, tags=["projects"])
 async def create_project(
     payload: CreateProjectInput,
-    team_id : str,
+    team_id: str,
     user: str = Depends(get_authenticated_user),
     db: AsyncSession = Depends(get_db)
 ):
-    project = await ProjectOperation(db).create_project(user, team_id, payload)
+    project = await ProjectOperation(db).create_project(
+    user=user,
+    team_id=team_id,
+    payload=payload,
+    )
+    return project
