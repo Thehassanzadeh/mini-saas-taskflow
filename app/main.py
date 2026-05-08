@@ -12,6 +12,7 @@ from app.routers.auth_routers import auth_router
 from app.routers.users_router import users_router
 from app.routers.teams_router import teams_router
 from app.routers.admins_router import admin_router
+from app.routers.projects_router import projects_router
 
 
 @asynccontextmanager
@@ -83,3 +84,5 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(teams_router)
 app.include_router(admin_router)
+app.include_router(projects_router)
+

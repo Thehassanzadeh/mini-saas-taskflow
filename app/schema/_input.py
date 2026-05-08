@@ -152,3 +152,10 @@ class CreateRoleInput(BaseModel):
 class AddUserToTeamInput(BaseModel):
     user_id: UUID
     role: Optional[str] = Field(default="team-user")
+
+
+class CreateProjectInput(BaseModel):
+    name: str
+    description: str
+    goal: str
+    ttl: int

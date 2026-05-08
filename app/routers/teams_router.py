@@ -130,3 +130,6 @@ async def delete_user_form_team(
 
     delete = await TeamOperation(db).delete_user(user, team_id, user_id)
     return delete
+
+
+
